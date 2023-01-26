@@ -97,7 +97,7 @@ jobs:
           path: $HOME/.clang
           key: llvm-10.0
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@f0cccbdf563688c6e0f9273d4bc27a8c5278de85
+        uses: KyleMayes/install-llvm-action@ef175530927af66c61e4e8da4fea4e15de63f780
         with:
           version: "10.0"
           directory: $HOME/.clang
