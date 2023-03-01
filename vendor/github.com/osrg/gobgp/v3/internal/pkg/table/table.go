@@ -86,6 +86,8 @@ func (t *Table) deletePathsByVrf(vrf *Vrf) []*Path {
 				rd = v.RD
 			case *bgp.EVPNNLRI:
 				rd = v.RD()
+			case *bgp.MUPNLRI:
+				rd = v.RD()
 			default:
 				return pathList
 			}
@@ -212,10 +214,11 @@ func (t *Table) GetLongerPrefixDestinations(key string) ([]*Destination, error) 
 	switch t.routeFamily {
 	case bgp.RF_IPv4_UC, bgp.RF_IPv6_UC, bgp.RF_IPv4_MPLS, bgp.RF_IPv6_MPLS:
 		_, prefix, err := net.ParseCIDR(key)
-		ones, bits := prefix.Mask.Size()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error parsing cidr %s: %v", key, err)
 		}
+		ones, bits := prefix.Mask.Size()
+
 		r := critbitgo.NewNet()
 		for _, dst := range t.GetDestinations() {
 			r.Add(nlriToIPNet(dst.nlri), dst)
@@ -273,6 +276,39 @@ func (t *Table) GetEvpnDestinationsWithRouteType(typ string) ([]*Destination, er
 		for _, dst := range destinations {
 			if nlri, ok := dst.nlri.(*bgp.EVPNNLRI); !ok {
 				return nil, fmt.Errorf("invalid evpn nlri type detected: %T", dst.nlri)
+			} else if nlri.RouteType == routeType {
+				results = append(results, dst)
+			}
+		}
+	default:
+		for _, dst := range destinations {
+			results = append(results, dst)
+		}
+	}
+	return results, nil
+}
+
+func (t *Table) GetMUPDestinationsWithRouteType(typ string) ([]*Destination, error) {
+	var routeType uint16
+	switch strings.ToLower(typ) {
+	case "isd":
+		routeType = bgp.MUP_ROUTE_TYPE_INTERWORK_SEGMENT_DISCOVERY
+	case "dsd":
+		routeType = bgp.MUP_ROUTE_TYPE_DIRECT_SEGMENT_DISCOVERY
+	case "t1st":
+		routeType = bgp.MUP_ROUTE_TYPE_TYPE_1_SESSION_TRANSFORMED
+	case "t2st":
+		routeType = bgp.MUP_ROUTE_TYPE_TYPE_2_SESSION_TRANSFORMED
+	default:
+		return nil, fmt.Errorf("unsupported mup route type: %s", typ)
+	}
+	destinations := t.GetDestinations()
+	results := make([]*Destination, 0, len(destinations))
+	switch t.routeFamily {
+	case bgp.RF_MUP_IPv4, bgp.RF_MUP_IPv6:
+		for _, dst := range destinations {
+			if nlri, ok := dst.nlri.(*bgp.MUPNLRI); !ok {
+				return nil, fmt.Errorf("invalid mup nlri type detected: %T", dst.nlri)
 			} else if nlri.RouteType == routeType {
 				results = append(results, dst)
 			}
@@ -428,6 +464,18 @@ func (t *Table) Select(option ...TableSelectOption) (*Table, error) {
 			for _, p := range prefixes {
 				// Uses LookupPrefix.Prefix as EVPN Route Type string
 				ds, err := t.GetEvpnDestinationsWithRouteType(p.Prefix)
+				if err != nil {
+					return nil, err
+				}
+				for _, dst := range ds {
+					if d := dst.Select(dOption); d != nil {
+						r.setDestination(d)
+					}
+				}
+			}
+		case bgp.RF_MUP_IPv4, bgp.RF_MUP_IPv6:
+			for _, p := range prefixes {
+				ds, err := t.GetMUPDestinationsWithRouteType(p.Prefix)
 				if err != nil {
 					return nil, err
 				}
