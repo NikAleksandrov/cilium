@@ -9,6 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/cilium/pkg/datapath/linux/linux_defaults"
 	"github.com/cilium/cilium/pkg/datapath/linux/route"
@@ -98,6 +99,7 @@ func addEgressIpRule(endpointIP net.IP, dstCIDR *net.IPNet, egressIP net.IP, ifa
 		From:     &net.IPNet{IP: endpointIP, Mask: net.CIDRMask(32, 32)},
 		To:       dstCIDR,
 		Table:    routingTableIdx,
+		Protocol: unix.RTPROT_KERNEL,
 	}
 
 	return route.ReplaceRule(ipRule)
@@ -125,6 +127,7 @@ func addEgressIpRoutes(egressIP net.IPNet, ifaceIndex int) error {
 		Dst:       &net.IPNet{IP: eniGatewayIP, Mask: net.CIDRMask(32, 32)},
 		Scope:     netlink.SCOPE_LINK,
 		Table:     routingTableIdx,
+		Protocol:  unix.RTPROT_KERNEL,
 	}); err != nil {
 		return fmt.Errorf("unable to add L2 nexthop route: %w", err)
 	}
@@ -135,6 +138,7 @@ func addEgressIpRoutes(egressIP net.IPNet, ifaceIndex int) error {
 		Dst:       &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)},
 		Table:     routingTableIdx,
 		Gw:        eniGatewayIP,
+		Protocol:  unix.RTPROT_KERNEL,
 	}); err != nil {
 		return fmt.Errorf("unable to add L2 nexthop route: %w", err)
 	}
@@ -151,6 +155,7 @@ func deleteIpRule(ipRule netlink.Rule) {
 		From:     ipRule.Src,
 		To:       ipRule.Dst,
 		Table:    ipRule.Table,
+		Protocol: unix.RTPROT_KERNEL,
 	})
 }
 
