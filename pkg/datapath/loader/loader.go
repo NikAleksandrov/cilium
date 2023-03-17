@@ -13,6 +13,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/byteorder"
@@ -89,6 +90,7 @@ func upsertEndpointRoute(ep datapath.Endpoint, ip net.IPNet) error {
 		Prefix: ip,
 		Device: ep.InterfaceName(),
 		Scope:  netlink.SCOPE_LINK,
+		Proto:  unix.RTPROT_KERNEL,
 	}
 
 	return route.Upsert(endpointRoute)

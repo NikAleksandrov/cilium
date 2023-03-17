@@ -15,6 +15,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/cgroups"
@@ -149,6 +150,7 @@ func addENIRules(sysSettings []sysctl.Setting, nodeAddressing datapath.NodeAddre
 		Mark:     linux_defaults.MarkMultinodeNodeport,
 		Mask:     linux_defaults.MaskMultinodeNodeport,
 		Table:    route.MainTable,
+		Protocol: unix.RTPROT_KERNEL,
 	}); err != nil {
 		return nil, fmt.Errorf("unable to install ip rule for ENI multi-node NodePort: %w", err)
 	}
