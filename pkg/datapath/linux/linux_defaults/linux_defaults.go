@@ -61,9 +61,6 @@ const (
 	// RouterMarkNodePort
 	MaskMultinodeNodeport = 0x80
 
-	// IPSecProtocolID IP protocol ID for IPSec defined in RFC4303
-	RouteProtocolIPSec = 50
-
 	// RulePriorityWireguard is the priority of the rule used for routing packets to Wireguard device for encryption
 	RulePriorityWireguard = 1
 
